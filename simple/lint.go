@@ -920,6 +920,52 @@ func CheckSimplerStructConversion(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+
+func CheckModelStructInitAllFields(pass *analysis.Pass) (interface{}, error) {
+	fn := func(node ast.Node) {
+		lit := node.(*ast.CompositeLit)
+		typ, _ := pass.TypesInfo.TypeOf(lit.Type).(*types.Named)
+		if typ == nil {
+			return
+		}
+		s, ok := typ.Underlying().(*types.Struct)
+		if !ok {
+			return
+		}
+		if typ.Obj().Pkg().Name() != "model" {
+			return
+		}
+		if s.NumFields() != len(lit.Elts) {
+			report.Report(pass, node,
+				fmt.Sprintf("should initialise all fields of struct model.%s", typ.Obj().Name()),
+			    // I don't know what does this mean, add by analogy with CheckSimplerStructConversion
+				report.FilterGenerated())
+			return
+		}
+		fields := make(map[string]bool)
+		for i := 0; i < s.NumFields(); i++ {
+			fields[s.Field(i).Name()] = true
+		}
+		for _, elt := range lit.Elts {
+			switch elt := elt.(type) {
+			case *ast.SelectorExpr:
+				delete(fields, elt.Sel.Name)
+			case *ast.KeyValueExpr:
+				delete(fields, elt.Key.(*ast.Ident).Name)
+			}
+		}
+		if len(fields) == 0 {
+			return
+		}
+		report.Report(pass, node,
+			fmt.Sprintf("should initialise all fields of struct model.%s", typ.Obj().Name()),
+			// I don't know what does this mean, add by analogy with CheckSimplerStructConversion
+			report.FilterGenerated())
+	}
+	code.Preorder(pass, fn, (*ast.CompositeLit)(nil))
+	return nil, nil
+}
+
 func CheckTrim(pass *analysis.Pass) (interface{}, error) {
 	sameNonDynamic := func(node1, node2 ast.Node) bool {
 		if reflect.TypeOf(node1) != reflect.TypeOf(node2) {

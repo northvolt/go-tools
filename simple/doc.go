@@ -486,4 +486,9 @@ can much simpler be expressed with a simple call to time.Sleep.`,
 		Text:  `Calling fmt.Sprint with a single string argument is unnecessary and identical to using the string directly.`,
 		Since: "2020.1",
 	},
+	"S1999": {
+		Title: "Test description",
+		Text: "Test text",
+		Since: "2020.X",
+	},
 }
